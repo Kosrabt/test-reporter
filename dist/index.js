@@ -265,6 +265,7 @@ const dotnet_trx_parser_1 = __nccwpck_require__(2664);
 const java_junit_parser_1 = __nccwpck_require__(676);
 const jest_junit_parser_1 = __nccwpck_require__(1113);
 const mocha_json_parser_1 = __nccwpck_require__(6043);
+const nunit_xml_parser_1 = __nccwpck_require__(2955);
 const path_utils_1 = __nccwpck_require__(4070);
 const github_utils_1 = __nccwpck_require__(3522);
 const markdown_utils_1 = __nccwpck_require__(6482);
@@ -296,6 +297,7 @@ class TestReporter {
         this.workDirInput = core.getInput('working-directory', { required: false });
         this.onlySummary = core.getInput('only-summary', { required: false }) === 'true';
         this.token = core.getInput('token', { required: true });
+        this.useFiles = core.getInput('useFiles', { required: true }) === 'true';
         this.context = (0, github_utils_1.getCheckRunContext)();
         this.octokit = github.getOctokit(this.token);
         if (this.listSuites !== 'all' && this.listSuites !== 'failed') {
@@ -326,7 +328,7 @@ class TestReporter {
                 ? new artifact_provider_1.ArtifactProvider(this.octokit, this.artifact, this.name, pattern, this.context.sha, this.context.runId, this.token)
                 : new local_file_provider_1.LocalFileProvider(this.name, pattern);
             const parseErrors = this.maxAnnotations > 0;
-            const trackedFiles = parseErrors ? yield inputProvider.listTrackedFiles() : [];
+            const trackedFiles = parseErrors && this.useFiles ? yield inputProvider.listTrackedFiles() : [];
             const workDir = this.artifact ? undefined : (0, path_utils_1.normalizeDirPath)(process.cwd(), true);
             if (parseErrors)
                 core.info(`Found ${trackedFiles.length} files tracked by GitHub`);
@@ -428,6 +430,8 @@ class TestReporter {
                 return new jest_junit_parser_1.JestJunitParser(options);
             case 'mocha-json':
                 return new mocha_json_parser_1.MochaJsonParser(options);
+            case 'nunit-xml':
+                return new nunit_xml_parser_1.NunitParser(options);
             default:
                 throw new Error(`Input variable 'reporter' is set to invalid value '${reporter}'`);
         }
@@ -1390,6 +1394,200 @@ class MochaJsonParser {
     }
 }
 exports.MochaJsonParser = MochaJsonParser;
+
+
+/***/ }),
+
+/***/ 2955:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.NunitParser = void 0;
+const xml2js_1 = __nccwpck_require__(6189);
+const path_utils_1 = __nccwpck_require__(4070);
+const test_results_1 = __nccwpck_require__(2768);
+class TestClass {
+    constructor(name) {
+        this.name = name;
+        this.tests = [];
+    }
+}
+class Test {
+    constructor(name, outcome, duration, error) {
+        this.name = name;
+        this.outcome = outcome;
+        this.duration = duration;
+        this.error = error;
+    }
+    get result() {
+        switch (this.outcome) {
+            case 'Passed':
+                return 'success';
+            case 'NotExecuted':
+                return 'skipped';
+            case 'Failed':
+                return 'failed';
+        }
+    }
+}
+class NunitParser {
+    constructor(options) {
+        this.options = options;
+    }
+    parse(path, content) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const report = yield this.getNunitReport(path, content);
+            const tc = this.getTestClasses(report);
+            const tr = this.getTestRunResult(path, report, tc);
+            tr.sort(true);
+            return tr;
+        });
+    }
+    getNunitReport(path, content) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const fixedFormat = content.replace(/<(\/?)(\w*)-(\w*)/g, '<$1$2$3');
+                const xml = yield (0, xml2js_1.parseStringPromise)(fixedFormat);
+                return xml;
+            }
+            catch (e) {
+                throw new Error(`Invalid XML at ${path}\n\n${e}`);
+            }
+        });
+    }
+    getTestClasses(nunit) {
+        if (nunit.testrun === undefined || nunit.testrun.testsuite === undefined) {
+            return [];
+        }
+        const unitTests = nunit.testrun.testsuite.flatMap(ts => this.getAllTestCase(ts));
+        const testClasses = {};
+        for (const testCase of unitTests) {
+            const className = testCase.$.classname;
+            let tc = testClasses[className];
+            if (tc === undefined) {
+                tc = new TestClass(className);
+                testClasses[tc.name] = tc;
+            }
+            const error = this.getErrorInfo(testCase);
+            const durationAttr = testCase.$.duration;
+            const duration = durationAttr ? this.parseNetDuration(durationAttr) : 0;
+            const test = new Test(testCase.$.name, this.getOutcome(testCase), duration, error);
+            tc.tests.push(test);
+        }
+        const result = Object.values(testClasses);
+        return result;
+    }
+    parseNetDuration(duration) {
+        return parseFloat(duration);
+    }
+    getTestRunResult(path, report, testClasses) {
+        const totalTime = report.testrun.$.duration ? this.parseNetDuration(report.testrun.$.duration) : 0;
+        const suites = testClasses.map(testClass => {
+            const tests = testClass.tests.map(test => {
+                const error = this.getError(test);
+                return new test_results_1.TestCaseResult(test.name, test.result, test.duration, error);
+            });
+            const group = new test_results_1.TestGroupResult(null, tests);
+            return new test_results_1.TestSuiteResult(testClass.name, [group]);
+        });
+        return new test_results_1.TestRunResult(path, suites, totalTime);
+    }
+    getAllTestCase(testsuite) {
+        let testCases = [];
+        if (testsuite.testcase !== undefined) {
+            testCases = testCases.concat(testsuite.testcase);
+        }
+        if (testsuite.testsuite !== undefined) {
+            for (const ts of testsuite.testsuite) {
+                testCases = testCases.concat(this.getAllTestCase(ts));
+            }
+        }
+        return testCases;
+    }
+    getOutcome(testCase) {
+        switch (testCase.$.result) {
+            case 'Passed':
+                return 'Passed';
+            case 'NotExecuted':
+                return 'NotExecuted';
+            case 'Failed':
+                return 'Failed';
+        }
+        return undefined;
+    }
+    getErrorInfo(testResult) {
+        if (testResult.$.result !== 'Failed') {
+            return undefined;
+        }
+        if (testResult.failure === undefined || testResult.failure.length === 0) {
+            return undefined;
+        }
+        return testResult.failure[0];
+    }
+    getError(test) {
+        if (!this.options.parseErrors || !test.error) {
+            return undefined;
+        }
+        const error = test.error;
+        if (!Array.isArray(error.message) ||
+            error.message.length === 0 ||
+            !Array.isArray(error.stacktrace) ||
+            error.stacktrace.length === 0) {
+            return undefined;
+        }
+        const message = test.error.message[0];
+        const stackTrace = test.error.stacktrace[0];
+        let path;
+        let line;
+        const src = this.exceptionThrowSource(stackTrace);
+        if (src) {
+            path = src.path;
+            line = src.line;
+        }
+        return {
+            path,
+            line,
+            message,
+            details: `${message}\n${stackTrace}`
+        };
+    }
+    exceptionThrowSource(stackTrace) {
+        const lines = stackTrace.split(/\r*\n/);
+        const re = / in (.+):line (\d+)$/;
+        const { trackedFiles } = this.options;
+        for (const str of lines) {
+            const match = str.match(re);
+            if (match !== null) {
+                const [_, fileStr, lineStr] = match;
+                const filePath = (0, path_utils_1.normalizeFilePath)(fileStr);
+                const workDir = this.getWorkDir(filePath);
+                if (workDir) {
+                    const file = filePath.substr(workDir.length);
+                    if (trackedFiles.includes(file)) {
+                        const line = parseInt(lineStr);
+                        return { path: file, line };
+                    }
+                }
+            }
+        }
+    }
+    getWorkDir(path) {
+        var _a, _b;
+        return ((_b = (_a = this.options.workDir) !== null && _a !== void 0 ? _a : this.assumedWorkDir) !== null && _b !== void 0 ? _b : (this.assumedWorkDir = (0, path_utils_1.getBasePath)(path, this.options.trackedFiles)));
+    }
+}
+exports.NunitParser = NunitParser;
 
 
 /***/ }),
