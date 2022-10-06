@@ -15,6 +15,7 @@ import {DotnetTrxParser} from './parsers/dotnet-trx/dotnet-trx-parser'
 import {JavaJunitParser} from './parsers/java-junit/java-junit-parser'
 import {JestJunitParser} from './parsers/jest-junit/jest-junit-parser'
 import {MochaJsonParser} from './parsers/mocha-json/mocha-json-parser'
+import {NunitXMLParser} from './parsers/nunit-xml/nunit-xml-parser'
 
 import {normalizeDirPath, normalizeFilePath} from './utils/path-utils'
 import {getCheckRunContext} from './utils/github-utils'
@@ -211,6 +212,8 @@ class TestReporter {
         return new JestJunitParser(options)
       case 'mocha-json':
         return new MochaJsonParser(options)
+      case 'nunit-xml':
+        return new NunitXMLParser(options)
       default:
         throw new Error(`Input variable 'reporter' is set to invalid value '${reporter}'`)
     }

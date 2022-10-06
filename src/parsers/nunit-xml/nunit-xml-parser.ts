@@ -1,10 +1,10 @@
 import {parseStringPromise} from 'xml2js'
 
-import {ErrorInfo, Outcome, TrxReport, UnitTest, UnitTestResult} from './dotnet-trx-types'
+import {ErrorInfo, Outcome, NunitReport, TestCase,  TestSuite} from './nunit-xml-types'
 import {ParseOptions, TestParser} from '../../test-parser'
 
 import {getBasePath, normalizeFilePath} from '../../utils/path-utils'
-import {parseIsoDate, parseNetDuration} from '../../utils/parse-utils'
+import {parseNetDuration} from '../../utils/parse-utils'
 
 import {
   TestExecutionResult,
@@ -14,8 +14,6 @@ import {
   TestCaseResult,
   TestCaseError
 } from '../../test-results'
-import { TestCase, TestSuite } from '../nunit-xml/nunit-xml-types'
-import { arrayBuffer } from 'stream/consumers'
 
 class TestClass {
   constructor(readonly name: string) {}
@@ -25,9 +23,9 @@ class TestClass {
 class Test {
   constructor(
     readonly name: string,
-    readonly outcome: Outcome,
+    readonly outcome: Outcome | undefined,
     readonly duration: number,
-    readonly error?: ErrorInfo
+    readonly error?: ErrorInfo 
   ) {}
 
   get result(): TestExecutionResult | undefined {
@@ -42,63 +40,52 @@ class Test {
   }
 }
 
-export class DotnetTrxParser implements TestParser {
+export class NunitParser implements TestParser {
   assumedWorkDir: string | undefined
 
   constructor(readonly options: ParseOptions) {}
 
   async parse(path: string, content: string): Promise<TestRunResult> {
-    const trx = await this.getTrxReport(path, content)
-    const tc = this.getTestClasses(trx)
-    const tr = this.getTestRunResult(path, trx, tc)
+    const report = await this.getNunitReport(path, content)
+
+    const tc = this.getTestClasses(report)
+    
+    const tr = this.getTestRunResult(path, report, tc)
     tr.sort(true)
     return tr
   }
 
-  private async getTrxReport(path: string, content: string): Promise<TrxReport> {
+  private async getNunitReport(path: string, content: string): Promise<NunitReport> {
     try {
-      return (await parseStringPromise(content)) as TrxReport
+      return (await parseStringPromise(content)) as NunitReport
     } catch (e) {
       throw new Error(`Invalid XML at ${path}\n\n${e}`)
     }
   }
 
-  private getTestClasses(trx: TrxReport): TestClass[] {
-    if (trx.TestRun.TestDefinitions === undefined || trx.TestRun.Results === undefined) {
+  private getTestClasses(nunit: NunitReport): TestClass[] {
+    if (nunit.testrun === undefined || nunit.testrun.testsuite === undefined) {
       return []
     }
 
-    const unitTests: {[id: string]: UnitTest} = {}
-    for (const td of trx.TestRun.TestDefinitions) {
-      for (const ut of td.UnitTest) {
-        unitTests[ut.$.id] = ut
-      }
-    }
-
-    const unitTestsResults = trx.TestRun.Results.flatMap(r => r.UnitTestResult).flatMap(result => ({
-      result,
-      test: unitTests[result.$.testId]
-    }))
-
+    const unitTests: TestCase[] =nunit.testrun.testsuite.flatMap(ts  => this.getAllTestCase(ts))
+ 
     const testClasses: {[name: string]: TestClass} = {}
-    for (const r of unitTestsResults) {
-      const className = r.test.TestMethod[0].$.className
+
+    for (const testCase of unitTests) {
+      const className = testCase.$.classname
+
       let tc = testClasses[className]
       if (tc === undefined) {
         tc = new TestClass(className)
         testClasses[tc.name] = tc
       }
-      const error = this.getErrorInfo(r.result)
-      const durationAttr = r.result.$.duration
+
+      const error = this.getErrorInfo(testCase)
+      const durationAttr = testCase.$.duration
       const duration = durationAttr ? parseNetDuration(durationAttr) : 0
 
-      const resultTestName = r.result.$.testName
-      const testName =
-        resultTestName.startsWith(className) && resultTestName[className.length] === '.'
-          ? resultTestName.substr(className.length + 1)
-          : resultTestName
-
-      const test = new Test(testName, r.result.$.outcome, duration, error)
+      const test = new Test(testCase.$.name, this.getOutcome(testCase), duration, error)
       tc.tests.push(test)
     }
 
@@ -106,9 +93,9 @@ export class DotnetTrxParser implements TestParser {
     return result
   }
 
-  private getTestRunResult(path: string, trx: TrxReport, testClasses: TestClass[]): TestRunResult {
-    const times = trx.TestRun.Times[0].$
-    const totalTime = parseIsoDate(times.finish).getTime() - parseIsoDate(times.start).getTime()
+  private getTestRunResult(path: string, report: NunitReport, testClasses: TestClass[]): TestRunResult {
+    
+    const totalTime = report.testrun.$.duration ? parseNetDuration(report.testrun.$.duration) : 0
 
     const suites = testClasses.map(testClass => {
       const tests = testClass.tests.map(test => {
@@ -131,19 +118,36 @@ export class DotnetTrxParser implements TestParser {
     }
 
     if (testsuite.testsuite !== undefined)
-      testCases = (this.getAllTestCase(testsuite.testsuite));
-
+      testsuite.testsuite.forEach(ts => {
+        testCases = testCases.concat(this.getAllTestCase(ts))
+      });
+      
     return testCases;
   }
 
-  private getErrorInfo(testResult: UnitTestResult): ErrorInfo | undefined {
-    if (testResult.$.outcome !== 'Failed') {
+  private getOutcome(testCase:TestCase): Outcome | undefined {
+    switch (testCase.$.result) {
+      case 'Passed':
+        return 'Passed'
+      case 'NotExecuted':
+        return 'NotExecuted'
+      case 'Failed':
+        return 'Failed'
+    }
+    return undefined
+  }
+
+  private getErrorInfo(testResult: TestCase): ErrorInfo | undefined {
+    if (testResult.$.result !== 'Failed') {
       return undefined
     }
 
-    const output = testResult.Output
-    const error = output?.length > 0 && output[0].ErrorInfo?.length > 0 ? output[0].ErrorInfo[0] : undefined
-    return error
+    if (testResult.failure == undefined || testResult.failure.length == 0)
+    {
+      return undefined
+    }
+
+    return testResult.failure[0]
   }
 
   private getError(test: Test): TestCaseError | undefined {
