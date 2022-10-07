@@ -1,0 +1,144 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`nunit tests matches report snapshot 1`] = `
+TestRunResult {
+  "path": "fixtures/external/nunit/test.xml",
+  "suites": Array [
+    TestSuiteResult {
+      "groups": Array [
+        TestGroupResult {
+          "name": null,
+          "tests": Array [
+            TestCaseResult {
+              "error": Object {
+                "details": "Intentional failure
+   at NUnit.Framework.Assert.Fail(String message, Object[] args) in D:\\\\Dev\\\\NUnit\\\\nunit-3.0\\\\work\\\\NUnitFramework\\\\src\\\\framework\\\\Assert.cs:line 142
+   at NUnit.Framework.Assert.Fail(String message) in D:\\\\Dev\\\\NUnit\\\\nunit-3.0\\\\work\\\\NUnitFramework\\\\src\\\\framework\\\\Assert.cs:line 152
+   at NUnit.Tests.Assemblies.MockTestFixture.FailingTest() in D:\\\\Dev\\\\NUnit\\\\nunit-3.0\\\\work\\\\NUnitFramework\\\\src\\\\mock-assembly\\\\MockAssembly.cs:line 121",
+                "line": undefined,
+                "message": "Intentional failure",
+                "path": undefined,
+              },
+              "name": "FailingTest",
+              "result": "failed",
+              "time": 0,
+            },
+            TestCaseResult {
+              "error": undefined,
+              "name": "InconclusiveTest",
+              "result": undefined,
+              "time": 0,
+            },
+            TestCaseResult {
+              "error": undefined,
+              "name": "MethodWithParameters(2,2)",
+              "result": "success",
+              "time": 0,
+            },
+            TestCaseResult {
+              "error": undefined,
+              "name": "MethodWithParameters(9,11)",
+              "result": "success",
+              "time": 0,
+            },
+            TestCaseResult {
+              "error": undefined,
+              "name": "MockTest1",
+              "result": "success",
+              "time": 0,
+            },
+            TestCaseResult {
+              "error": undefined,
+              "name": "MockTest2",
+              "result": "success",
+              "time": 0,
+            },
+            TestCaseResult {
+              "error": undefined,
+              "name": "MockTest3",
+              "result": "success",
+              "time": 0,
+            },
+            TestCaseResult {
+              "error": undefined,
+              "name": "MockTest4",
+              "result": undefined,
+              "time": 0,
+            },
+            TestCaseResult {
+              "error": undefined,
+              "name": "MockTest5",
+              "result": undefined,
+              "time": 0,
+            },
+            TestCaseResult {
+              "error": undefined,
+              "name": "MyTest",
+              "result": "success",
+              "time": 0,
+            },
+            TestCaseResult {
+              "error": undefined,
+              "name": "NotRunnableTest",
+              "result": undefined,
+              "time": 0,
+            },
+            TestCaseResult {
+              "error": undefined,
+              "name": "Test1",
+              "result": "success",
+              "time": 0,
+            },
+            TestCaseResult {
+              "error": undefined,
+              "name": "Test1",
+              "result": "success",
+              "time": 0,
+            },
+            TestCaseResult {
+              "error": undefined,
+              "name": "Test2",
+              "result": "success",
+              "time": 0,
+            },
+            TestCaseResult {
+              "error": undefined,
+              "name": "Test2",
+              "result": "success",
+              "time": 0,
+            },
+            TestCaseResult {
+              "error": undefined,
+              "name": "TestCase",
+              "result": "success",
+              "time": 0,
+            },
+            TestCaseResult {
+              "error": Object {
+                "details": "System.ApplicationException : Intentional Exception
+   at NUnit.Tests.Assemblies.MockTestFixture.MethodThrowsException() in D:\\\\Dev\\\\NUnit\\\\nunit-3.0\\\\work\\\\NUnitFramework\\\\src\\\\mock-assembly\\\\MockAssembly.cs:line 158
+   at NUnit.Tests.Assemblies.MockTestFixture.TestWithException() in D:\\\\Dev\\\\NUnit\\\\nunit-3.0\\\\work\\\\NUnitFramework\\\\src\\\\mock-assembly\\\\MockAssembly.cs:line 153",
+                "line": undefined,
+                "message": "System.ApplicationException : Intentional Exception",
+                "path": undefined,
+              },
+              "name": "TestWithException",
+              "result": "failed",
+              "time": 0,
+            },
+            TestCaseResult {
+              "error": undefined,
+              "name": "TestWithManyProperties",
+              "result": "success",
+              "time": 0,
+            },
+          ],
+        },
+      ],
+      "name": undefined,
+      "totalTime": undefined,
+    },
+  ],
+  "totalTime": 0,
+}
+`;

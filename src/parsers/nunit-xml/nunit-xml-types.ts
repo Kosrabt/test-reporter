@@ -58,8 +58,8 @@ export interface TestCase {
 }
 
 export interface ErrorInfo {
-  Message: string[]
-  StackTrace: string[]
+  message: string[]
+  stacktrace: string[]
 }
 
-export type Outcome = 'Passed' | 'NotExecuted' | 'Failed' 
+export type Outcome = 'Passed' | 'NotExecuted' | 'Failed'

@@ -14,8 +14,6 @@ import {
   TestCaseResult,
   TestCaseError
 } from '../../test-results'
-import { TestCase, TestSuite } from '../nunit-xml/nunit-xml-types'
-import { arrayBuffer } from 'stream/consumers'
 
 class TestClass {
   constructor(readonly name: string) {}
@@ -120,20 +118,6 @@ export class DotnetTrxParser implements TestParser {
     })
 
     return new TestRunResult(path, suites, totalTime)
-  }
-
-  private getAllTestCase(testsuite: TestSuite): TestCase[]
-  {
-    let testCases: TestCase[] = []
-    if (testsuite.testcase !== undefined)
-    {
-      testCases = testCases.concat(testsuite.testcase)
-    }
-
-    if (testsuite.testsuite !== undefined)
-      testCases = (this.getAllTestCase(testsuite.testsuite));
-
-    return testCases;
   }
 
   private getErrorInfo(testResult: UnitTestResult): ErrorInfo | undefined {
