@@ -83,22 +83,22 @@ class TestReporter {
     const pattern = this.pathReplaceBackslashes ? pathsList.map(normalizeFilePath) : pathsList
 
     const inputProvider = this.artifact
-        ? new ArtifactProvider(
-            this.octokit,
-            this.artifact,
-            this.name,
-            pattern,
-            this.context.sha,
-            this.context.runId,
-            this.token
-          )
-        : new LocalFileProvider(this.name, pattern)
+      ? new ArtifactProvider(
+          this.octokit,
+          this.artifact,
+          this.name,
+          pattern,
+          this.context.sha,
+          this.context.runId,
+          this.token
+        )
+      : new LocalFileProvider(this.name, pattern)
 
     const parseErrors = this.maxAnnotations > 0
-    
-    const trackedFiles:string[] = [];
+
+    const trackedFiles: string[] = []
     // this.useFiles ? (await inputProvider.listTrackedFiles()) : []
-  
+
     const workDir = this.artifact ? undefined : normalizeDirPath(process.cwd(), true)
 
     core.info(`Found ${trackedFiles.length} files tracked by GitHub`)
