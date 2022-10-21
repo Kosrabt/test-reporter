@@ -320,7 +320,6 @@ class TestReporter {
                 process.chdir(this.workDirInput);
             }
             core.info(`Check runs will be created with SHA=${this.context.sha}`);
-            core.info(`Use InputProvider: ${this.useFiles}`);
             // Split path pattern by ',' and optionally convert all backslashes to forward slashes
             // fast-glob (micromatch) always interprets backslashes as escape characters instead of directory separators
             const pathsList = this.path.split(',');
@@ -329,8 +328,7 @@ class TestReporter {
                 ? new artifact_provider_1.ArtifactProvider(this.octokit, this.artifact, this.name, pattern, this.context.sha, this.context.runId, this.token)
                 : new local_file_provider_1.LocalFileProvider(this.name, pattern);
             const parseErrors = this.maxAnnotations > 0;
-            const trackedFiles = [];
-            // this.useFiles ? (await inputProvider.listTrackedFiles()) : []
+            const trackedFiles = this.useFiles ? (yield inputProvider.listTrackedFiles()) : [];
             const workDir = this.artifact ? undefined : (0, path_utils_1.normalizeDirPath)(process.cwd(), true);
             core.info(`Found ${trackedFiles.length} files tracked by GitHub`);
             const options = {
