@@ -75,26 +75,29 @@ class TestReporter {
 
     core.info(`Check runs will be created with SHA=${this.context.sha}`)
 
+    core.info(`Use InputProvider: ${this.useFiles}`)
+
     // Split path pattern by ',' and optionally convert all backslashes to forward slashes
     // fast-glob (micromatch) always interprets backslashes as escape characters instead of directory separators
     const pathsList = this.path.split(',')
     const pattern = this.pathReplaceBackslashes ? pathsList.map(normalizeFilePath) : pathsList
 
     const inputProvider = this.artifact
-      ? new ArtifactProvider(
-          this.octokit,
-          this.artifact,
-          this.name,
-          pattern,
-          this.context.sha,
-          this.context.runId,
-          this.token
-        )
-      : new LocalFileProvider(this.name, pattern)
+        ? new ArtifactProvider(
+            this.octokit,
+            this.artifact,
+            this.name,
+            pattern,
+            this.context.sha,
+            this.context.runId,
+            this.token
+          )
+        : new LocalFileProvider(this.name, pattern)
 
     const parseErrors = this.maxAnnotations > 0
-
-    const trackedFiles:string[] = [];// this.useFiles ? (await inputProvider.listTrackedFiles()) : []
+    
+    const trackedFiles:string[] = [];
+    // this.useFiles ? (await inputProvider.listTrackedFiles()) : []
   
     const workDir = this.artifact ? undefined : normalizeDirPath(process.cwd(), true)
 
