@@ -44,6 +44,7 @@ class TestReporter {
   readonly workDirInput = core.getInput('working-directory', {required: false})
   readonly onlySummary = core.getInput('only-summary', {required: false}) === 'true'
   readonly token = core.getInput('token', {required: true})
+  readonly useFiles = core.getInput('useFiles', {required: true}) === 'true'
   readonly octokit: InstanceType<typeof GitHub>
   readonly context = getCheckRunContext()
 
@@ -92,7 +93,9 @@ class TestReporter {
       : new LocalFileProvider(this.name, pattern)
 
     const parseErrors = this.maxAnnotations > 0
-    const trackedFiles = await inputProvider.listTrackedFiles()
+
+    const trackedFiles = this.useFiles ? (await inputProvider.listTrackedFiles()): []
+  
     const workDir = this.artifact ? undefined : normalizeDirPath(process.cwd(), true)
 
     core.info(`Found ${trackedFiles.length} files tracked by GitHub`)

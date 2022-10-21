@@ -72,6 +72,10 @@ inputs:
     description: GitHub Access Token
     required: false
     default: ${{ github.token }}
+  useFiles:
+    description: Load the files to provide better stack trace results
+    required: false
+    default: 'true'
 outputs:
   conclusion:
     description: |
