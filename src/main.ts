@@ -94,7 +94,7 @@ class TestReporter {
 
     const parseErrors = this.maxAnnotations > 0
 
-    const trackedFiles = this.useFiles ? (await inputProvider.listTrackedFiles()): []
+    const trackedFiles:string[] = [];// this.useFiles ? (await inputProvider.listTrackedFiles()) : []
   
     const workDir = this.artifact ? undefined : normalizeDirPath(process.cwd(), true)
 
